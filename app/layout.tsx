@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Lead Prioritizer",
+  title: "Caprae AI Lead Prioritizer",
   description: "An acquisition target prioritization tool with deterministic scoring and optional AI analysis"
 };
 

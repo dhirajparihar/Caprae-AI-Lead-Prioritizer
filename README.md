@@ -2,16 +2,16 @@
 
 A focused, end-to-end prototype for the Caprae Capital AI-readiness challenge. Instead of simply building another scraper, this prototype tackles the core PE bottleneck: **Out of 500 scraped companies, which 3 should an operator spend their time on today?**
 
-This application takes a raw company list and runs it through an **AI-Configured Deterministic Engine**. It translates a natural-language investment thesis into strict mathematical scoring rules, ranks the leads, and finally uses AI to draft personalized cold outreach.
+This application takes a raw company list and runs it through a **thesis-driven scoring** engine. It translates a natural-language investment thesis into strict mathematical scoring rules, ranks the leads, and finally uses AI to draft personalized cold outreach.
 
 ## Key Features Built for the 5-Hour Sprint
 
-1. **Thesis-Driven Scoring Engine (Business Use Case 10/10)**: 
+1. **Thesis-Driven Scoring Engine**: 
    - Analysts don't use generic criteria. Users can type a natural language investment thesis (e.g., *"Healthcare in NY under $100M"*).
-   - **Google Gemini 2.5 Flash** extracts structured rule-parameters from the thesis and uses them to power a transparent, deterministic 0–100 scoring model. 
-2. **Batch AI Enrichment (Technicality 10/10)**:
+   - **Google Gemini** extracts structured rule-parameters from the thesis and uses them to power a transparent, deterministic 0–100 scoring model. 
+2. **Batch AI Enrichment**:
    - Operators shouldn't have to click 500 times. A single click sequentially processes and enriches the top-priority leads in the background.
-3. **Actionable Cold Email Drafts (UX/UI 10/10)**:
+3. **Actionable Cold Email Drafts**:
    - The workflow doesn't end at a score. For high-priority leads, the AI drafts a highly personalized, editable 3-sentence cold email based on the thesis and company data, complete with a "Copy to Clipboard" workflow.
 4. **Transparent Rule Extraction**:
    - The UI surfaces the extracted rules as visual tags so the user explicitly understands how the math engine is scoring the leads.
@@ -23,7 +23,7 @@ This application takes a raw company list and runs it through an **AI-Configured
 - Papa Parse for CSV parsing
 - Vercel recommended for hosting
 
-### Production Architecture
+### Current prototype architecture
 
 ```text
 Browser
@@ -38,7 +38,11 @@ Next.js UI (Configurable Thesis & Email Review)
   +--> Google Gemini API (Natural language rule extraction + Email drafting)
 ```
 
-The current five-hour prototype intentionally keeps persistence local to the browser so it can be demonstrated instantly without provisioning external infrastructure. For production, move the scored leads and AI analyses into Supabase using the schema below.
+The current five-hour prototype intentionally keeps persistence local to the browser so it can be demonstrated instantly without provisioning external infrastructure.
+
+### Production path
+
+For production, move the scored leads and AI analyses into Supabase using the schema below.
 
 ## Suggested Supabase Schema
 
