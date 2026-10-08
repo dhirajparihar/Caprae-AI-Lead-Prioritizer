@@ -1,16 +1,21 @@
-# 2-Minute Video Script
+# 2-Minute Walkthrough Script
 
-## 0:00–0:20
-SaaSquatch helps identify and enrich potential leads. I focused on the next bottleneck: once you have a list of companies, which ones should an operator spend time on first?
+## 0:00–0:20 — Problem
 
-## 0:20–0:50
-This is AI Lead Prioritizer. I upload a company CSV, the system validates it, removes duplicates, scores every company, and creates a high, medium, and low priority queue. The score is explainable rather than being a black box.
+"Once you have a large sourced company list, the next problem is deciding which companies deserve attention first. I built AI Lead Prioritizer around that screening step."
 
-## 0:50–1:20
-When I open a target, I can see the exact business-fit signals behind its score. I can then use the AI analysis to generate a concise reason, a potential concern, and an outreach angle. AI is deliberately used for qualitative reasoning, while the core score stays deterministic.
+## 0:20–0:50 — Screening
 
-## 1:20–1:45
-The frontend uses Next.js, React, and TypeScript. For production I would persist the leads and analyses in Supabase PostgreSQL, call OpenAI only for qualitative analysis, and deploy the application on Vercel.
+"Here I'm working with a company list. The system deduplicates it and scores every company against a transparent business-fit model. The queue is ranked, searchable and filterable, so the analyst can work from the highest-priority targets instead of scanning a raw list."
 
-## 1:45–2:00
-The goal is not simply to generate more leads. It is to help the team spend limited time on the targets most likely to matter.
+## 0:50–1:15 — Investment thesis
+
+"The thesis is configurable in plain English. AI extracts the relevant industry, geography, revenue and employee constraints into explicit rules. The final score is still deterministic, so the analyst can understand why a target ranked where it did."
+
+## 1:15–1:45 — Optional AI review
+
+"For a target that deserves deeper attention, I can generate an AI review. It adds a concise readout, a potential concern, an outreach angle and an editable email draft. AI is optional and sits after the screening step rather than replacing the ranking logic."
+
+## 1:45–2:00 — Architecture
+
+"The prototype uses Next.js and TypeScript, with client-side CSV processing and deterministic scoring. Gemini handles thesis extraction and optional target analysis. For production, I would add server-side persistence, authentication, rate limiting and audit logging."
