@@ -25,32 +25,41 @@ function currency(n: number) {
 export default function Home() {
   const [leads, setLeads] = useState<Lead[]>(() => dedupeLeads(demoRows).map((r, i) => scoreLead(r, i, defaultRules)));
   const [selected, setSelected] = useState<Lead | null>(null);
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState<"All" | "High" | "Medium" | "Low">("All");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-  const [message, setMessage] = useState("Demo data loaded. Upload a CSV to replace it.");
+  const [message, setMessage] = useState("Demo data loaded · 8 companies");
   const [thesis, setThesis] = useState("Looking for founder-led B2B SaaS companies in the US with $5M+ revenue.");
   const [batchLoading, setBatchLoading] = useState(false);
   const [rules, setRules] = useState<ScoringRules>(defaultRules);
   const [rulesLoading, setRulesLoading] = useState(false);
+  const [showThesis, setShowThesis] = useState(false);
 
-  const filtered = useMemo(() => leads
-    .filter((l) => filter === "All" || l.priority === filter)
-    .filter((l) => `${l.company} ${l.industry} ${l.location}`.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => b.score - a.score), [leads, filter, search]);
+  const filtered = useMemo(
+    () =>
+      leads
+        .filter((l) => filter === "All" || l.priority === filter)
+        .filter((l) => `${l.company} ${l.industry} ${l.location}`.toLowerCase().includes(search.toLowerCase()))
+        .sort((a, b) => b.score - a.score),
+    [leads, filter, search]
+  );
 
-  const counts = useMemo(() => ({
-    high: leads.filter((l) => l.priority === "High").length,
-    medium: leads.filter((l) => l.priority === "Medium").length,
-    low: leads.filter((l) => l.priority === "Low").length
-  }), [leads]);
+  const counts = useMemo(
+    () => ({
+      high: leads.filter((l) => l.priority === "High").length,
+      medium: leads.filter((l) => l.priority === "Medium").length,
+      low: leads.filter((l) => l.priority === "Low").length
+    }),
+    [leads]
+  );
 
   async function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setLoading(true);
-    setMessage("Parsing, validating and scoring leads...");
+    setMessage(`Reading ${file.name}…`);
+
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -71,11 +80,11 @@ export default function Home() {
         setSelected(null);
         setFilter("All");
         setSearch("");
-        setMessage(`${unique.length} unique leads analyzed successfully.`);
+        setMessage(`${unique.length} companies ranked`);
         setLoading(false);
       },
       error: () => {
-        setMessage("Could not parse this CSV. Check the required columns.");
+        setMessage("Could not read that CSV. Check the required columns and try again.");
         setLoading(false);
       }
     });
@@ -84,27 +93,36 @@ export default function Home() {
   async function updateScoringRules() {
     setRulesLoading(true);
     try {
-      const res = await fetch("/api/extract-rules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ thesis }) });
+      const res = await fetch("/api/extract-rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ thesis })
+      });
       if (!res.ok) throw new Error("Failed");
       const newRules = await res.json();
       setRules(newRules);
-      setLeads(prev => prev.map((l, i) => scoreLead(l, i, newRules) as Lead));
-      if (selected) {
-        setSelected(curr => curr ? scoreLead(curr, 0, newRules) as Lead : null);
-      }
-      setMessage("Scoring model updated based on thesis!");
+      setLeads((prev) => prev.map((l, i) => scoreLead(l, i, newRules) as Lead));
+      if (selected) setSelected((curr) => (curr ? (scoreLead(curr, 0, newRules) as Lead) : null));
+      setMessage("Scoring rules updated");
+      setShowThesis(false);
     } catch {
-      setMessage("Failed to update scoring rules. Ensure API key is set.");
+      setMessage("Could not update the scoring rules. Check your AI configuration.");
     } finally {
       setRulesLoading(false);
     }
   }
 
   async function analyzeLead(lead: Lead, currentThesis: string) {
-    const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lead, thesis: currentThesis }) });
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead, thesis: currentThesis })
+    });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "AI request failed");
-    return { ...lead, concern: data.concern, outreachAngle: data.outreachAngle, emailDraft: data.emailDraft, reasons: lead.reasons, aiReason: data.reason } as Lead & { aiReason?: string };
+    return { ...lead, concern: data.concern, outreachAngle: data.outreachAngle, emailDraft: data.emailDraft, reasons: lead.reasons, aiReason: data.reason } as Lead & {
+      aiReason?: string;
+    };
   }
 
   async function generateAI(lead: Lead) {
@@ -113,11 +131,11 @@ export default function Home() {
     try {
       const updated = await analyzeLead(lead, thesis);
       setSelected(updated);
-      setLeads(prev => prev.map(l => l.id === lead.id ? updated : l));
+      setLeads((prev) => prev.map((l) => (l.id === lead.id ? updated : l)));
     } catch {
       const updated = { ...lead, concern: "Unable to generate AI analysis right now." };
       setSelected(updated);
-      setLeads(prev => prev.map(l => l.id === lead.id ? updated : l));
+      setLeads((prev) => prev.map((l) => (l.id === lead.id ? updated : l)));
     } finally {
       setAiLoading(false);
     }
@@ -125,129 +143,299 @@ export default function Home() {
 
   async function runBatchAI() {
     setBatchLoading(true);
-    const topLeads = filtered.filter(l => !(l as any).aiReason).slice(0, 3);
+    const topLeads = filtered.filter((l) => !(l as Lead & { aiReason?: string }).aiReason).slice(0, 3);
     for (const lead of topLeads) {
       try {
         const updated = await analyzeLead(lead, thesis);
-        setLeads(prev => prev.map(l => l.id === lead.id ? updated : l));
-        setSelected(curr => curr?.id === lead.id ? updated : curr);
+        setLeads((prev) => prev.map((l) => (l.id === lead.id ? updated : l)));
+        setSelected((curr) => (curr?.id === lead.id ? updated : curr));
       } catch {
-        // silently fail for batch
+        // keep the queue usable even if one AI call fails
       }
     }
     setBatchLoading(false);
   }
 
   function exportCSV() {
-    const csv = Papa.unparse(filtered.map(({ id, ...l }) => ({ ...l, reasons: l.reasons.join(" | ") })));
+    const csv = Papa.unparse(
+      filtered.map(({ id, ...l }) => ({ ...l, reasons: l.reasons.join(" | ") }))
+    );
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "prioritized-leads.csv"; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "prioritized-leads.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
+  const selectedWithAI = selected as (Lead & { aiReason?: string }) | null;
+
   return (
-    <main>
+    <main className="appShell">
       <header className="topbar">
-        <div className="brand"><span className="brandMark">AI</span><div><strong>AI Lead Prioritizer</strong><small>Acquisition target intelligence</small></div></div>
-        <label className="uploadButton">{loading ? "Analyzing…" : "Upload CSV"}<input type="file" accept=".csv" onChange={handleFile} disabled={loading} /></label>
+        <div className="brand">
+          <span className="brandMark">AI</span>
+          <div>
+            <strong>AI Lead Prioritizer</strong>
+            <small>Acquisition screening desk</small>
+          </div>
+        </div>
+
+        <div className="topbarActions">
+          <span className="dataStatus"><span className="statusDot" /> Local session</span>
+          <label className="uploadButton">
+            <span>{loading ? "Importing…" : "Import CSV"}</span>
+            <input type="file" accept=".csv" onChange={handleFile} disabled={loading} />
+          </label>
+        </div>
       </header>
 
-      <section className="hero">
-        <div><p className="eyebrow">AI SCREENING WORKFLOW</p><h1>Find the targets worth your time.</h1><p>Turn a raw company list into an explainable acquisition-priority queue in seconds.</p></div>
-        <button className="secondary" onClick={exportCSV}>Export results</button>
-      </section>
+      <section className="workspace">
+        <div className="pageIntro">
+          <div>
+            <p className="eyebrow">AI SCREENING WORKFLOW</p>
+            <h1>Prioritize the companies worth a closer look.</h1>
+            <p className="introText">
+              Rank a company list against a clear investment thesis, then use AI only where human review benefits from context.
+            </p>
+          </div>
 
-      <section className="thesis-section" style={{ padding: "0 2rem 1rem", maxWidth: 1200, margin: "0 auto" }}>
-        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, fontSize: "0.875rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--foreground)" }}>Investment Thesis (AI Context)</label>
-        <textarea 
-          style={{ width: "100%", padding: "0.75rem", borderRadius: "6px", border: "1px solid var(--border)", minHeight: "80px", fontFamily: "inherit", background: "var(--background)", color: "var(--foreground)" }}
-          value={thesis} 
-          onChange={e => setThesis(e.target.value)}
-          placeholder="e.g. We are looking for founder-led B2B SaaS companies with $5M+ revenue..."
-        />
-        
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "1rem" }}>
-          {rules.targetIndustries.length > 0 && <span className="pill medium" style={{ background: "#eef2ff", color: "#4f46e5", border: "1px solid #c7d2fe" }}>🎯 {rules.targetIndustries.join(", ")}</span>}
-          {rules.targetLocations.length > 0 && <span className="pill medium" style={{ background: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0" }}>📍 {rules.targetLocations.join(", ")}</span>}
-          {rules.minRevenue > 0 && <span className="pill medium" style={{ background: "#fdf4ff", color: "#c026d3", border: "1px solid #fae8ff" }}>💰 &gt;{currency(rules.minRevenue)}</span>}
-          {rules.maxRevenue < 1000000000 && <span className="pill medium" style={{ background: "#fdf4ff", color: "#c026d3", border: "1px solid #fae8ff" }}>💰 &lt;{currency(rules.maxRevenue)}</span>}
+          <div className="introActions">
+            <button className="button secondaryButton" onClick={() => setShowThesis((v) => !v)}>
+              {showThesis ? "Close thesis" : "Edit thesis"}
+            </button>
+            <button className="button secondaryButton" onClick={exportCSV}>Export CSV</button>
+          </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
-          <button className="primary" onClick={updateScoringRules} disabled={rulesLoading}>
-            {rulesLoading ? "Updating Rules..." : "Update Scoring Engine"}
+        <div className="controlBar">
+          <div className="thesisSummary">
+            <span className="controlLabel">Current thesis</span>
+            <span className="thesisText">{thesis}</span>
+          </div>
+          <button className="textButton" onClick={() => setShowThesis((v) => !v)}>
+            {showThesis ? "Hide" : "Change"}
           </button>
         </div>
-      </section>
 
-      <section className="stats">
-        <div className="stat"><span>Total analyzed</span><b>{leads.length}</b></div>
-        <div className="stat"><span>High priority</span><b>{counts.high}</b></div>
-        <div className="stat"><span>Medium priority</span><b>{counts.medium}</b></div>
-        <div className="stat"><span>Low priority</span><b>{counts.low}</b></div>
-      </section>
+        {showThesis && (
+          <section className="thesisPanel">
+            <div className="panelHeading">
+              <div>
+                <span className="controlLabel">Investment thesis</span>
+                <h2>Tell the screening engine what matters.</h2>
+              </div>
+              <span className="panelHint">AI converts this into explicit, inspectable rules.</span>
+            </div>
+            <textarea
+              className="thesisInput"
+              value={thesis}
+              onChange={(e) => setThesis(e.target.value)}
+              placeholder="e.g. Founder-led B2B SaaS companies in Texas with $5M–$100M revenue."
+            />
+            <div className="thesisFooter">
+              <div className="ruleList">
+                {rules.targetIndustries.length > 0 && <span>{rules.targetIndustries.join(", ")}</span>}
+                {rules.targetLocations.length > 0 && <span>{rules.targetLocations.join(", ")}</span>}
+                {rules.minRevenue > 0 && <span>Revenue ≥ {currency(rules.minRevenue)}</span>}
+                {rules.maxRevenue < 1000000000 && <span>Revenue ≤ {currency(rules.maxRevenue)}</span>}
+                {rules.minEmployees > 0 && <span>Employees ≥ {rules.minEmployees}</span>}
+                {rules.maxEmployees < 100000 && <span>Employees ≤ {rules.maxEmployees}</span>}
+              </div>
+              <button className="button primaryButton" onClick={updateScoringRules} disabled={rulesLoading}>
+                {rulesLoading ? "Updating…" : "Update scoring"}
+              </button>
+            </div>
+          </section>
+        )}
 
-      <section className="toolbar">
-        <input placeholder="Search company, industry or location…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <div className="filters">
-          {["All", "High", "Medium", "Low"].map((x) => <button key={x} className={filter === x ? "active" : ""} onClick={() => setFilter(x)}>{x}</button>)}
-          <button className="secondary" onClick={runBatchAI} disabled={batchLoading} style={{ marginLeft: "auto", background: "var(--background)" }}>
-            {batchLoading ? "Analyzing Top 3..." : "✨ Auto-Analyze Top 3"}
-          </button>
-        </div>
-      </section>
+        <section className="summaryGrid">
+          <div className="summaryCell">
+            <span>Companies</span>
+            <strong>{leads.length}</strong>
+            <small>in current list</small>
+          </div>
+          <div className="summaryCell">
+            <span>High priority</span>
+            <strong>{counts.high}</strong>
+            <small>80+ score</small>
+          </div>
+          <div className="summaryCell">
+            <span>Median fit</span>
+            <strong>{leads.length ? Math.round([...leads].sort((a,b) => a.score-b.score)[Math.floor(leads.length/2)].score) : 0}</strong>
+            <small>out of 100</small>
+          </div>
+          <div className="summaryCell">
+            <span>AI coverage</span>
+            <strong>{leads.filter((l) => (l as Lead & { aiReason?: string }).aiReason).length}</strong>
+            <small>analyses generated</small>
+          </div>
+        </section>
 
-      <p className="message">{message}</p>
+        <section className="listSection">
+          <div className="sectionHeader">
+            <div>
+              <p className="eyebrow">SCREENING QUEUE</p>
+              <h2>Ranked targets</h2>
+            </div>
+            <div className="queueMeta">{message}</div>
+          </div>
 
-      <section className="content">
-        <div className="tableCard">
-          <div className="tableHeader"><span>Company</span><span>Fit</span><span>Revenue</span><span>Employees</span><span>Priority</span></div>
-          {filtered.map((lead) => <button className="row" key={lead.id} onClick={() => setSelected(lead)}>
-            <div><strong>{lead.company}</strong><small>{lead.industry || "Unknown industry"} · {lead.location || "Unknown location"}</small></div>
-            <strong>{lead.score}/100</strong><span>{currency(lead.revenue)}</span><span>{lead.employees.toLocaleString()}</span><span className={`pill ${lead.priority.toLowerCase()}`}>{lead.priority}</span>
-          </button>)}
-          {!filtered.length && <div className="empty">No leads match your filters.</div>}
-        </div>
+          <div className="toolbar">
+            <div className="searchBox">
+              <span className="searchIcon" aria-hidden="true">⌕</span>
+              <input
+                aria-label="Search companies"
+                placeholder="Search companies, industries or locations"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
 
-        <aside className="detail">
-          {selected ? <>
-            <div className="detailTop"><div><p className="eyebrow">AI TARGET REVIEW</p><h2>{selected.company}</h2><p>{selected.industry} · {selected.location}</p></div><div className="score">{selected.score}<small>/100</small></div></div>
-            <h3>Why this target?</h3>
-            <ul>{selected.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
-            <button className="primary" onClick={() => generateAI(selected)} disabled={aiLoading}>{aiLoading ? "Generating…" : "Generate AI analysis"}</button>
-            {selected.concern && <div className="aiBox">
-              <b>AI view</b><p>{(selected as Lead & { aiReason?: string }).aiReason || "The lead has multiple verified fit signals."}</p>
-              <b>Potential concern</b><p>{selected.concern}</p>
-              {selected.outreachAngle && <><b>Outreach angle</b><p>{selected.outreachAngle}</p></>}
-              {selected.emailDraft && (
-                <>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
-                    <b>Cold Email Draft</b>
-                    <button 
-                      className="secondary" 
-                      style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem", background: "var(--background)" }}
-                      onClick={() => { navigator.clipboard.writeText(selected.emailDraft || ""); alert("Copied to clipboard!"); }}
-                    >
-                      Copy
-                    </button>
+            <div className="filterGroup" aria-label="Priority filters">
+              {(["All", "High", "Medium", "Low"] as const).map((x) => (
+                <button
+                  key={x}
+                  className={filter === x ? "filterButton active" : "filterButton"}
+                  onClick={() => setFilter(x)}
+                >
+                  {x}
+                </button>
+              ))}
+            </div>
+
+            <button className="button aiButton" onClick={runBatchAI} disabled={batchLoading || !filtered.length}>
+              {batchLoading ? "Analyzing…" : "AI analyze top 3"}
+            </button>
+          </div>
+
+          <div className="queueTable">
+            <div className="queueHeader" aria-hidden="true">
+              <span>Company</span>
+              <span>Fit</span>
+              <span>Revenue</span>
+              <span>Employees</span>
+              <span>Priority</span>
+            </div>
+
+            {filtered.map((lead, index) => (
+              <button
+                className={selected?.id === lead.id ? "queueRow selected" : "queueRow"}
+                key={lead.id}
+                onClick={() => setSelected(lead)}
+              >
+                <div className="companyCell">
+                  <span className="rank">{String(index + 1).padStart(2, "0")}</span>
+                  <span>
+                    <strong>{lead.company}</strong>
+                    <small>{lead.industry || "Unknown industry"} · {lead.location || "Unknown location"}</small>
+                  </span>
+                </div>
+                <span className="fitScore">{lead.score}</span>
+                <span>{currency(lead.revenue)}</span>
+                <span>{lead.employees.toLocaleString()}</span>
+                <span className={`priorityText ${lead.priority.toLowerCase()}`}>{lead.priority}</span>
+              </button>
+            ))}
+
+            {!filtered.length && (
+              <div className="emptyState">
+                <strong>No companies match the current filter.</strong>
+                <span>Try another priority or clear the search.</span>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="detailPanel">
+          {selected ? (
+            <>
+              <div className="detailHeader">
+                <div>
+                  <p className="eyebrow">AI TARGET REVIEW</p>
+                  <h2>{selected.company}</h2>
+                  <p className="detailMeta">{selected.industry} · {selected.location}</p>
+                </div>
+                <div className="detailScore">
+                  <span>{selected.score}</span>
+                  <small>/100</small>
+                </div>
+              </div>
+
+              <div className="detailGrid">
+                <div>
+                  <span className="controlLabel">Business fit</span>
+                  <ul className="reasonList">
+                    {selected.reasons.map((reason) => <li key={reason}>{reason}</li>)}
+                  </ul>
+                </div>
+
+                <div className="facts">
+                  <div><span>Revenue</span><strong>{currency(selected.revenue)}</strong></div>
+                  <div><span>Employees</span><strong>{selected.employees.toLocaleString()}</strong></div>
+                  <div><span>Technology</span><strong>{selected.technology || "Not provided"}</strong></div>
+                  <div><span>Contact</span><strong>{selected.contactAvailable ? "Available" : "Not provided"}</strong></div>
+                </div>
+              </div>
+
+              <div className="aiReview">
+                <div className="aiReviewHeader">
+                  <div>
+                    <span className="controlLabel">AI analysis</span>
+                    <p>Use AI to add context. The underlying score remains deterministic.</p>
                   </div>
-                  <textarea 
-                    style={{ width: "100%", minHeight: "120px", background: "var(--background)", padding: "1rem", borderRadius: "6px", border: "1px solid var(--border)", marginTop: "0.5rem", fontSize: "0.875rem", lineHeight: 1.5, fontFamily: "inherit", resize: "vertical" }}
-                    value={selected.emailDraft}
-                    onChange={(e) => {
-                      const newDraft = e.target.value;
-                      setSelected({ ...selected, emailDraft: newDraft });
-                      setLeads(prev => prev.map(l => l.id === selected.id ? { ...l, emailDraft: newDraft } : l));
-                    }}
-                  />
-                </>
-              )}
-            </div>}
-          </> : <div className="empty detailEmpty">Select a lead to inspect its business-fit signals.</div>}
-        </aside>
+                  <button className="button primaryButton compact" onClick={() => generateAI(selected)} disabled={aiLoading}>
+                    {aiLoading ? "Generating…" : selectedWithAI?.aiReason ? "Regenerate" : "Generate"}
+                  </button>
+                </div>
+
+                {selectedWithAI?.aiReason ? (
+                  <div className="aiReviewGrid">
+                    <div><span>Readout</span><p>{selectedWithAI.aiReason}</p></div>
+                    <div><span>Potential concern</span><p>{selected.concern || "Review the underlying company data before outreach."}</p></div>
+                    <div><span>Outreach angle</span><p>{selected.outreachAngle || "Lead with the strongest verified fit signal."}</p></div>
+                    {selected.emailDraft && (
+                      <div className="emailDraft">
+                        <div className="emailDraftHeader">
+                          <span>Draft email</span>
+                          <button
+                            className="textButton"
+                            onClick={() => void navigator.clipboard.writeText(selected.emailDraft || "")}
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <textarea
+                          value={selected.emailDraft}
+                          onChange={(e) => {
+                            const newDraft = e.target.value;
+                            setSelected({ ...selected, emailDraft: newDraft });
+                            setLeads((prev) => prev.map((l) => l.id === selected.id ? { ...l, emailDraft: newDraft } : l));
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="aiEmpty">
+                    <span>Optional</span>
+                    <p>Generate an AI readout when you need reasoning, a concern check, or an outreach angle.</p>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="detailEmpty">
+              <span className="eyebrow">AI TARGET REVIEW</span>
+              <strong>Select a company from the screening queue.</strong>
+              <span>Its fit signals, financial profile and AI analysis will appear here.</span>
+            </div>
+          )}
+        </section>
       </section>
 
-      <footer>Prototype built for the Caprae Capital AI-readiness challenge · deterministic scoring + optional AI analysis</footer>
+      <footer className="footer">AI Lead Prioritizer · deterministic screening with optional AI review</footer>
     </main>
   );
 }
