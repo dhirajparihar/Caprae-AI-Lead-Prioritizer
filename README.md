@@ -4,23 +4,6 @@ A focused, end-to-end prototype for the Caprae Capital AI-readiness challenge. I
 
 This application takes a raw company list and runs it through a **thesis-driven scoring** engine. It translates a natural-language investment thesis into strict mathematical scoring rules, ranks the leads, and finally uses AI to draft personalized cold outreach.
 
-flowchart LR
-    A["500-Company CSV"]
-    B["Next.js 15"]
-    C["Gemini<br/>Thesis → Rules"]
-    D["Deterministic<br/>0–100 Scoring"]
-    E["Ranked Leads"]
-    F["Gemini<br/>AI Enrichment"]
-    G["Personalized<br/>Cold Email"]
-
-    A --> B
-    B --> C
-    C --> D
-    A --> D
-    D --> E
-    E --> F
-    F --> G
-
 ## Key Features Built for the 5-Hour Sprint
 
 1. **Thesis-Driven Scoring Engine**: 
