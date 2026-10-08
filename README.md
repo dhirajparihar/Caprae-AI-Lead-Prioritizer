@@ -32,17 +32,12 @@ Browser
 Next.js UI (Configurable Thesis & Email Review)
   |
   +--> Deterministic Scoring Engine (in-memory fast sorting)
-  |       |
-  |       +--> Supabase PostgreSQL (Persistence layer)
   |
   +--> Google Gemini API (Natural language rule extraction + Email drafting)
 ```
 
 The current five-hour prototype intentionally keeps persistence local to the browser so it can be demonstrated instantly without provisioning external infrastructure.
 
-### Production path
-
-For production, move the scored leads and AI analyses into Supabase using the schema below.
 
 ## Suggested Supabase Schema
 
@@ -83,21 +78,4 @@ Add your Gemini API key to `.env.local`:
 npm run dev
 ```
 Open http://localhost:3000.
-
-## 2-Minute Demo Script
-
-**0:00–0:20 — Problem**
-"Instead of rebuilding a scraper in five hours, I focused on the next bottleneck: once you have a list, which ones matter? And more importantly, how do you adapt to different deal theses?"
-
-**0:20–0:50 — The AI-Configured Engine**
-"Here I upload a raw CSV. The system deduplicates it. Now, watch this: I type an Investment Thesis like 'Software companies in Texas'. When I hit update, the AI extracts the parameters, updates the math rules, and instantly re-sorts the entire lead list based on my custom thesis."
-
-**0:50–1:20 — Batch Automation**
-"Clicking leads one by one is bad UX. So I built a Batch processing pipeline. With one click, the AI goes through the top 3 highest-priority leads and generates actionable insights in the background."
-
-**1:20–1:45 — Actionable Outreach**
-"The workflow ends here. For our top lead, the AI hasn't just given me an 'angle'. It drafted a highly personalized 3-sentence cold email based on the thesis. I can edit it right here, copy it, and hit send."
-
-**1:45–2:00 — Architecture & Future**
-"For this 5-hour prototype, persistence is local so it's instantly demo-able. In production, this data flows into a Supabase PostgreSQL instance. By bridging transparent deterministic scoring with natural language AI, we get the best of both worlds: speed, explainability, and flexibility."
 
