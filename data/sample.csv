@@ -1,0 +1,11 @@
+company,website,industry,employees,revenue,location,technology,growthSignal,contactAvailable
+Atlas Industrial,atlasindustrial.com,Manufacturing,420,32000000,Texas,Shopify,88,true
+Northstar Services,northstarservices.com,Business Services,180,18500000,Florida,HubSpot,72,true
+BluePeak Software,bluepeak.io,Software,65,6200000,California,React,68,true
+Delta Distribution,deltadist.com,Distribution,620,54000000,Georgia,Salesforce,81,true
+Acme Retail Group,acmeretail.com,Retail,35,1800000,Ohio,WordPress,35,false
+Greenfield Health,greenfieldhealth.com,Healthcare Services,260,27500000,New York,Salesforce,77,true
+Summit Logistics,summitlogistics.com,Logistics,510,47000000,Illinois,Oracle,91,true
+Coastal Media,coastalmedia.com,Media,90,7200000,Florida,Webflow,40,true
+Legacy Foods,legacyfoods.com,Food Manufacturing,310,22000000,Texas,NetSuite,74,true
+Pioneer Consulting,pioneerconsulting.com,Consulting,42,3900000,Colorado,HubSpot,52,false
