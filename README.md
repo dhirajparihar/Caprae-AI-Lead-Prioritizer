@@ -4,6 +4,8 @@ A focused, end-to-end prototype for the Caprae Capital AI-readiness challenge. I
 
 This application takes a raw company list and runs it through a **thesis-driven scoring** engine. It translates a natural-language investment thesis into strict mathematical scoring rules, ranks the leads, and finally uses AI to draft personalized cold outreach.
 
+<img width="2758" height="204" alt="mermaid-diagram" src="https://github.com/user-attachments/assets/7bd5581c-4375-4acf-a65b-3898201e56e4" />
+
 ## Key Features Built for the 5-Hour Sprint
 
 1. **Thesis-Driven Scoring Engine**: 
